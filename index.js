@@ -94,7 +94,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/api/events', async (req, res) => {
+    app.get("/api/events", async (req, res) => {
       const search = req.query.search;
       const category = req.query.category;
       const location = req.query.location;
@@ -102,7 +102,7 @@ async function run() {
       if (search) {
         query.title = {
           $regex: search,
-          $options: 'i', // upper lower matter korbe na
+          $options: "i", // upper lower matter korbe na
         };
       }
       if (category) {
@@ -110,7 +110,7 @@ async function run() {
         // ?category=Music,Tech,Digial
         // console.log(category, category.split(',')); ["Music", "Tech", "Digital"]
 
-        query.category = { $in: category.split(',') };
+        query.category = { $in: category.split(",") };
       }
       if (location) {
         query.location = location;
@@ -121,7 +121,6 @@ async function run() {
       res.send(result);
     });
 
-    
     app.get("/api/single-events/:id", async (req, res) => {
       const { id } = req.params;
       const query = { _id: new ObjectId(id) };
@@ -160,6 +159,73 @@ async function run() {
       // console.log(result);
 
       res.send(result);
+    });
+
+    app.patch("/api/users/upgrade-premium/:email", async (req, res) => {
+      const { email } = req.params;
+      const { amount, transactionId, paymentStatus, paymentType } = req.body;
+
+      const result = await usersCollection.updateOne(
+        { email },
+        {
+          $set: {
+            isPremium: true,
+          },
+        },
+      );
+      const paymentData = {
+        userEmail: email,
+        amount,
+        transactionId,
+        paymentStatus,
+        paymentType,
+        paidAt: new Date(),
+      };
+
+      await paymentCollection.insertOne(paymentData);
+
+      res.send(result);
+    });
+
+
+     app.post('/api/events/booking', async (req, res) => {
+      const { amount, evetId, eventTitle, quantity, email, paymentType, transactionId, paymentStatus } = req.body;
+      // console.log(req.body);
+      const bookingData = {
+        evetId,
+        eventTitle,
+        attendeeEmail: email,
+        quantity,
+        amount,
+        transactionId,
+        paymentStatus,
+        bookingDate: new Date(),
+      };
+      const isBookingExist = await bookingCollection.findOne({ transactionId });
+      if (isBookingExist) {
+        return res.status(200).send({ message: 'Already paid' });
+      }
+      const bookingRes = await bookingCollection.insertOne(bookingData);
+
+      await eventsCollection.updateOne(
+        { _id: new ObjectId(evetId) },
+        {
+          $inc: {
+            capacity: -quantity,
+          },
+        }
+      );
+      const paymentData = {
+        userEmail: email,
+        amount,
+        transactionId,
+        paymentStatus,
+        paymentType,
+        paidAt: new Date(),
+      };
+
+      await paymentCollection.insertOne(paymentData);
+      res.send(bookingRes);
     });
 
     app.patch("/api/events/:id", async (req, res) => {
