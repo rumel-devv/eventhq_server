@@ -98,6 +98,7 @@ async function run() {
       const search = req.query.search;
       const category = req.query.category;
       const location = req.query.location;
+      console.log(search,category,location);
       const query = {}; // {title: "mern"}
       if (search) {
         query.title = {
